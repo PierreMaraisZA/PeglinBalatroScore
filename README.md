@@ -41,7 +41,3 @@ In `BepInEx/config/PeglinBalatroScore.cfg` (start the game once to create it):
 | `ShowOverkill` | true | OVERKILL / OVERHEAL stamp |
 | `Scale`, `OffsetX`, `OffsetY` | 1, 0, 0 | Size and position nudges |
 | `EnableLogging` | true | Boss HP target and layout notes in `BepInEx/LogOutput.log` |
-
-## Building
-
-See [BUILDING.md](BUILDING.md).
