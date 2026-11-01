@@ -1,0 +1,22 @@
+# Build output
+bin/
+obj/
+dist/
+
+# Editors and IDEs
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.swp
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Never commit the game's DLLs (they belong to the game's developers) or built mod DLLs
+*.dll
+
+# Raw screen recordings (the GIFs in media/ are what gets published)
+*.mp4

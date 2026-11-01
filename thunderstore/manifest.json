@@ -1,0 +1,9 @@
+{
+  "name": "PeglinBalatroScore",
+  "version_number": "1.0.0",
+  "website_url": "https://github.com/PierreMaraisZA/PeglinBalatroScore",
+  "description": "A Balatro-style pegs x damage score for every shot, with flames that grow as you close in on the act boss's HP.",
+  "dependencies": [
+    "BepInEx-BepInExPack_Peglin-5.4.2100"
+  ]
+}
