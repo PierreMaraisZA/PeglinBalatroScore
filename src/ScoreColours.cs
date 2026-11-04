@@ -25,6 +25,9 @@ namespace PeglinBalatroScore
         public static readonly Color32 ResultShade = new Color32(24, 18, 16, 255);
         public static readonly Color32 ResultBorder = new Color32(222, 170, 30, 255);
 
+        /// <summary>The rigged bomb's red, used for the bomb chest's damage total.</summary>
+        public static readonly Color32 BombRed = new Color32(190, 50, 40, 255);
+
         public static readonly Color32 Text = new Color32(255, 255, 255, 255);
         public static readonly Color32 TextShadow = new Color32(28, 22, 20, 200);
         public static readonly Color32 Outline = new Color32(24, 18, 16, 255);

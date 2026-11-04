@@ -24,14 +24,14 @@ The build copies the DLL into the game's `BepInEx\plugins\PeglinBalatroScore\` f
 dotnet test tests/PeglinBalatroScore.Tests.csproj
 ```
 
-The score rules, flame curve, number formatting, boss HP rules, tooltip text and fire simulation live in `src/Core`
-with no Unity references, so they can be tested without the game.
+The score rules, flame curve, number formatting, boss HP rules, tooltip text, fire simulation, bomb-chest timeline
+and bomb physics live in `src/Core` with no Unity references, so they can be tested without the game.
 
 ## Project layout
 
 | Path | What's there |
 |---|---|
-| `src/Core/` | Pure score, flame, boss HP and fire rules, unit tested |
+| `src/Core/` | Pure score, flame, boss HP, fire, bomb-chest and bomb-physics rules, unit tested |
 | `src/Plugin.cs` | Entry point and all config settings |
 | `src/ScoreHud.cs` | The widget: reads each shot from the game, places it, animates it, moves the boss bar and scroll |
 | `src/ScoreBox.cs` | One number box with its flame |
@@ -41,6 +41,10 @@ with no Unity references, so they can be tested without the game.
 | `src/ShotDamage.cs` | Reads the numbers `Attack.GetDamage` uses from the battle |
 | `src/BossTarget.cs` | Finds the act boss's max HP from the map |
 | `src/ScreenShift.cs` | Moves a game object down the screen by a number of pixels |
+| `src/BombChestHud.cs` | The bomb chest: catches each lit bomb, bursts with the last one and shows the total |
+| `src/ChestArt.cs` | Draws the chest, planks and splinters as pixel-art textures |
+| `src/DamagePop.cs` | The bomb total that pops out of the wreckage and shatters |
+| `src/DevTools.cs` | Dev hotkeys (Debug builds only) |
 | `tests/` | xUnit tests for `src/Core` |
 | `media/` | GIFs used on GitHub, Thunderstore and Steam |
 | `tools/make-icon.ps1` | Draws `icon.png` |

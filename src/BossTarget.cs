@@ -135,9 +135,25 @@ namespace PeglinBalatroScore
             try
             {
                 GameObject prefab = handle.WaitForCompletion();
-                // Some prefabs keep the Enemy on a child object rather than the root.
-                Enemy enemy = prefab != null ? prefab.GetComponentInChildren<Enemy>(true) : null;
-                if (enemy != null)
+                // Some prefabs keep the Enemy on a child object rather than the root. A barricade in the same prefab is a
+                // shield in front of the boss (the Mole's tree), not the boss itself, so take the first enemy that isn't one.
+                Enemy enemy = null;
+                if (prefab != null)
+                {
+                    foreach (Enemy candidate in prefab.GetComponentsInChildren<Enemy>(true))
+                    {
+                        if (!(candidate is BarricadeEnemy))
+                        {
+                            enemy = candidate;
+                            break;
+                        }
+                    }
+                }
+                if (prefab != null && enemy == null && prefab.GetComponentInChildren<BarricadeEnemy>(true) != null)
+                {
+                    described.Add($"{prefab.name} turn {turn} barricade, skipped");
+                }
+                else if (enemy != null)
                 {
                     bool isBoss = enemy.enemyTypes.HasFlag(Enemy.EnemyType.Boss);
                     float health = enemy.StartingHealth;

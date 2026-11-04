@@ -5,7 +5,7 @@
     <AssemblyName>PeglinBalatroScore</AssemblyName>
     <RootNamespace>PeglinBalatroScore</RootNamespace>
     <LangVersion>latest</LangVersion>
-    <Version>1.0.0</Version>
+    <Version>1.0.2</Version>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <!-- Override on the command line if the game lives elsewhere: dotnet build -p:GamePath="D:\Games\Peglin" -->

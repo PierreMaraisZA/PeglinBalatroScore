@@ -13,6 +13,7 @@ your orb bounces, and catches fire when the shot gets big.
 - **The real total.** When the balls stop, the boxes give way to the damage the game actually deals, bonuses and multipliers included, for 3 seconds (real time, so game speed doesn't cut it short), then it fades out. Fire again and you're straight back to `0 x 0`.
 - **Flames.** The closer a shot gets to the act boss's max HP, the bigger the fire, and it bursts when you pass it.
 - **OVERKILL!** A burning stamp when a shot beats the boss's max HP, or a green **OVERHEAL!** when a heal goes past yours.
+- **Bomb chest.** A see-through chest behind Peglin catches a bomb the moment each one is lit, while your orb is still bouncing. It's sized for 10 bombs; extra ones heap up and spill over the sides. The instant Peglin's last thrown bomb explodes, the chest goes off with it: every bomb inside explodes, the chest blows apart into planks, and the bombs' total damage (each bomb's damage after relics, added up) bursts out of it, then shatters.
 - **Hover for help.** Mouse over the score for a plain explanation and your last shot's damage or healing.
 - **Fits the game's UI.** Tooltips draw over the score, and in boss fights the boss health bar and enemy scroll slide down to make room.
 
@@ -25,8 +26,10 @@ Mod Manager. BepInEx is installed for you.
 `PeglinBalatroScore.dll` in `Peglin/BepInEx/plugins/`.
 
 Built for Peglin v2.0.12. Works alongside
-[PeglinRelicRerolls](https://thunderstore.io/c/peglin/p/PierreMarais/PeglinRelicRerolls/) and
-[PeglinMaxSpeed](https://thunderstore.io/c/peglin/p/PierreMarais/PeglinMaxSpeed/).
+[PeglinRelicRerolls](https://thunderstore.io/c/peglin/p/PierreMarais/PeglinRelicRerolls/),
+[PeglinMaxSpeed](https://thunderstore.io/c/peglin/p/PierreMarais/PeglinMaxSpeed/) and
+[PeglinFonts](https://thunderstore.io/c/peglin/p/PierreMarais/PeglinFonts/); the score follows whatever font
+PeglinFonts is using, including hotkey changes.
 
 ## Settings
 
@@ -40,4 +43,6 @@ In `BepInEx/config/PeglinBalatroScore.cfg` (start the game once to create it):
 | `ShakeNumbers` | true | Numbers shake as the score heats up |
 | `ShowOverkill` | true | OVERKILL / OVERHEAL stamp |
 | `Scale`, `OffsetX`, `OffsetY` | 1, 0, 0 | Size and position nudges |
+| `ShowBombChest` | true | The bomb chest behind Peglin |
+| `ChestScale` | 1 | Size of the chest, relative to Peglin |
 | `EnableLogging` | true | Boss HP target and layout notes in `BepInEx/LogOutput.log` |

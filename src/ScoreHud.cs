@@ -82,6 +82,7 @@ namespace PeglinBalatroScore
         private EnemyInfoManager _scroll;
         private float _nextScrollSearch;
         private bool _fontApplied;
+        private float _nextFontSearch;
         private bool _warnedRead;
         private float _layoutWidth = -1f;
         private RectTransform _timesRect;
@@ -106,6 +107,23 @@ namespace PeglinBalatroScore
             GameObject host = new GameObject("PeglinBalatroScore") { hideFlags = HideFlags.HideAndDontSave };
             DontDestroyOnLoad(host);
             _instance = host.AddComponent<ScoreHud>();
+            host.AddComponent<BombChestHud>();
+        }
+
+        internal static ScoreHud Instance => _instance;
+
+        /// <summary>The canvas the score draws on; the bomb chest shares it so both sit under the game's tooltips.</summary>
+        internal RectTransform CanvasRect => _canvasRect;
+
+        internal Canvas HudCanvas => _canvas;
+
+        /// <summary>The camera that draws the canvas, or null while it's still an overlay.</summary>
+        internal Camera HudCamera => CanvasCamera;
+
+        /// <summary>Put the canvas on the game camera now (the score only does this while it's visible).</summary>
+        internal void SyncCanvasNow()
+        {
+            SyncCanvas();
         }
 
         /// <summary>The attack went out: use its exact total (a few relics only apply their multiplier now).</summary>
@@ -252,6 +270,9 @@ namespace PeglinBalatroScore
 
         private void Update()
         {
+#if DEBUG
+            DevTools.Update();
+#endif
             float deltaTime = Time.unscaledDeltaTime;
             float time = Time.unscaledTime;
             BattleController battle = FindBattle();
@@ -724,22 +745,25 @@ namespace PeglinBalatroScore
             return _battle;
         }
 
-        /// <summary>Use the game's own pixel font, taken from the scroll's text when it's around.</summary>
+        /// <summary>
+        /// Use the game's own pixel font, taken from the scroll's text when it's around. The font can change while the
+        /// game is running (PeglinFonts swaps it, including with its F9 hotkey), so this checks again and follows it.
+        /// </summary>
         private void ApplyFont()
         {
-            if (_fontApplied)
-            {
-                return;
-            }
             TMP_FontAsset font = null;
             EnemyInfoManager scroll = FindScroll();
             TMP_Text scrollText = scroll != null ? scroll.GetComponentInChildren<TMP_Text>(true) : null;
-            if (scrollText != null && scrollText.font != null && scrollText.font != TMP_Settings.defaultFontAsset)
+            if (scrollText != null)
             {
+                // Whatever the scroll uses is the game's current font, the vanilla one included: PeglinFonts can swap back.
                 font = scrollText.font;
             }
-            if (font == null)
+            if (font == null && !_fontApplied && Time.unscaledTime >= _nextFontSearch)
             {
+                // Before the scroll exists, borrow any font that isn't TextMeshPro's own default. This is a last
+                // resort, so only look now and then rather than every frame.
+                _nextFontSearch = Time.unscaledTime + 0.5f;
                 foreach (TextMeshProUGUI text in FindObjectsOfType<TextMeshProUGUI>())
                 {
                     if (text.font != null && text.font != TMP_Settings.defaultFontAsset && !text.transform.IsChildOf(transform))
@@ -749,7 +773,7 @@ namespace PeglinBalatroScore
                     }
                 }
             }
-            if (font == null)
+            if (font == null || (_fontApplied && font == GameFont))
             {
                 return;
             }
@@ -759,7 +783,23 @@ namespace PeglinBalatroScore
             _times.font = font;
             _overkill.SetFont(font);
             _tooltip.SetFont(font);
+            GameFont = font;
             _fontApplied = true;
+        }
+
+        /// <summary>The game's own pixel font, once the score has found it (the bomb chest uses it too).</summary>
+        internal static TMP_FontAsset GameFont { get; private set; }
+
+        /// <summary>
+        /// Find and apply the game's font even when the score itself is hidden (with ShowScore off, say), so the bomb
+        /// chest and its damage total still draw in PeglinFonts' font.
+        /// </summary>
+        internal static void ApplyFontNow()
+        {
+            if (_instance != null)
+            {
+                _instance.ApplyFont();
+            }
         }
 
         private static long PlayerMaxHealth(BattleController battle)
@@ -773,6 +813,11 @@ namespace PeglinBalatroScore
             float toughest = 0f;
             foreach (Battle.Enemies.Enemy enemy in FindObjectsOfType<Battle.Enemies.Enemy>())
             {
+                // Barricades are shields in front of an enemy, not the enemy to beat.
+                if (enemy is BarricadeEnemy)
+                {
+                    continue;
+                }
                 if (!bossOnly || enemy.enemyTypes.HasFlag(Battle.Enemies.Enemy.EnemyType.Boss))
                 {
                     toughest = Mathf.Max(toughest, enemy.maxHealth);

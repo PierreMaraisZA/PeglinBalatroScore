@@ -12,7 +12,7 @@ namespace PeglinBalatroScore
         // BepInEx names the config file after the GUID, so this gives BepInEx/config/PeglinBalatroScore.cfg.
         public const string Guid = "PeglinBalatroScore";
         public const string Name = "PeglinBalatroScore";
-        public const string Version = "1.0.0";
+        public const string Version = "1.0.2";
 
         /// <summary>The Peglin version this mod was built and tested against (Unity's Application.version).</summary>
         public const string SupportedGameVersion = "2.0.12";
@@ -28,6 +28,19 @@ namespace PeglinBalatroScore
         internal static ConfigEntry<float> OffsetX;
         internal static ConfigEntry<float> OffsetY;
         internal static ConfigEntry<bool> EnableLogging;
+        internal static ConfigEntry<bool> ShowBombChest;
+        internal static ConfigEntry<float> ChestScale;
+
+#if DEBUG
+        // Dev mode only exists in Debug builds (dotnet build -c Debug). Release builds, the ones handed to players,
+        // contain none of this code and no [Dev] config section, so it can't be switched on from the config.
+        internal static ConfigEntry<bool> DevMode;
+        internal static ConfigEntry<KeyboardShortcut> DevBombRelicsHotkey;
+
+        internal static bool DevModeActive => DevMode != null && DevMode.Value;
+#else
+        internal static bool DevModeActive => false;
+#endif
 
         private void Awake()
         {
@@ -52,11 +65,26 @@ namespace PeglinBalatroScore
                 "Move the score down (negative) or up (positive), in pixels at 1920x1080.");
             EnableLogging = Config.Bind("General", "EnableLogging", true,
                 "Write informational messages (the boss HP target for each act) to the BepInEx log.");
+            ShowBombChest = Config.Bind("Bomb Chest", "ShowBombChest", true,
+                "A see-through chest behind Peglin catches a bomb as each one is lit, blows apart with Peglin's last bomb, and shows the bombs' total damage.");
+            ChestScale = Config.Bind("Bomb Chest", "ChestScale", 1f,
+                new ConfigDescription("Size of the chest, relative to Peglin.", new AcceptableValueRange<float>(0.5f, 2f)));
+
+#if DEBUG
+            DevMode = Config.Bind("Dev", "DevMode", false,
+                "Turn on developer hotkeys. Only exists in Debug builds.");
+            DevBombRelicsHotkey = Config.Bind("Dev", "BombRelicsHotkey", new KeyboardShortcut(KeyCode.F3),
+                "Give every bomb relic you don't have; press again to take back the ones it gave. Adding a relic also unlocks it in your save for good (this is a development tool).");
+#endif
 
             CheckGameVersion();
             new Harmony(Guid).PatchAll();
             ScoreHud.Ensure();
+#if DEBUG
+            Log.LogInfo($"{Name} {Version} loaded (DEBUG build, dev mode {(DevModeActive ? "on" : "off")}).");
+#else
             Log.LogInfo($"{Name} {Version} loaded.");
+#endif
         }
 
         /// <summary>
