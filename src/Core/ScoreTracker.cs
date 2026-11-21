@@ -43,6 +43,12 @@ namespace PeglinBalatroScore.Core
         /// <summary>Whether the most recent finished shot healed rather than dealt damage.</summary>
         public bool LastShotWasHeal { get; private set; }
 
+        /// <summary>
+        /// A finished shot hasn't been reported to other mods yet. Set when a shot completes; the total can still be
+        /// refined after that (as the attack goes out), so the HUD reports it then, or once the result is over.
+        /// </summary>
+        public bool ReportPending { get; private set; }
+
         /// <summary>How long the result stays on screen, in real seconds (game speed doesn't shorten it).</summary>
         public float ResultHoldSeconds { get; set; } = 3f;
 
@@ -89,18 +95,38 @@ namespace PeglinBalatroScore.Core
             ResultSecondsLeft = ResultHoldSeconds;
             LastShotTotal = Total;
             LastShotWasHeal = IsHeal;
+            ReportPending = true;
+        }
+
+        /// <summary>The finished shot to report, once: true with its final total and kind, then false until the next.</summary>
+        public bool TakeReport(out long total, out bool heal)
+        {
+            total = LastShotTotal ?? 0;
+            heal = LastShotWasHeal;
+            if (!ReportPending)
+            {
+                return false;
+            }
+            ReportPending = false;
+            return true;
         }
 
         /// <summary>
         /// The attack went out with a slightly different total (a few relics apply their multiplier only as the attack
-        /// starts). Corrects the result on show without restarting its timer.
+        /// starts). Corrects the result on show without restarting its timer, and the total still to be reported even
+        /// if the result has already gone (bombs can keep the attack waiting longer than the result stays up).
         /// </summary>
         public void RefineResult(long total)
         {
+            total = Math.Max(0, total);
             if (Phase == ScorePhase.Result)
             {
-                Total = Math.Max(0, total);
-                LastShotTotal = Total;
+                Total = total;
+                LastShotTotal = total;
+            }
+            else if (Phase == ScorePhase.Ready && ReportPending)
+            {
+                LastShotTotal = total;
             }
         }
 

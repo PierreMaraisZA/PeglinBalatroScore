@@ -18,6 +18,58 @@ namespace PeglinBalatroScore.Tests
             Assert.Equal(expected, BossHealthRules.MaxHealth(boss, cruciball));
         }
 
+        [Theory]
+        [InlineData(0, 120)]
+        [InlineData(5, 120)]
+        [InlineData(6, 150)]
+        [InlineData(9, 150)]
+        [InlineData(10, 150)]
+        public void MaxHealth_NonBossUsesImprovedHealthFromCruciballSix(int cruciball, float expected)
+        {
+            BossFightSpawn enemy = new BossFightSpawn(0, isBoss: false, startingHealth: 120, startingHealthFirstCruciball: 150);
+
+            Assert.Equal(expected, BossHealthRules.MaxHealth(enemy, cruciball));
+        }
+
+        [Theory]
+        [InlineData(6)]
+        [InlineData(9)]
+        public void MaxHealth_BossStillUsesBaseHealthBelowCruciballTen(int cruciball)
+        {
+            BossFightSpawn boss = new BossFightSpawn(0, isBoss: true, startingHealth: 400, startingHealthFirstCruciball: 550);
+
+            Assert.Equal(400, BossHealthRules.MaxHealth(boss, cruciball));
+        }
+
+        [Theory]
+        [InlineData(5, 120)]
+        [InlineData(6, 150)]
+        [InlineData(9, 150)]
+        public void TargetHealth_FightWithNoBossFlag_UsesTheNonBossThreshold(int cruciball, long expected)
+        {
+            List<BossFightSpawn> spawns = new List<BossFightSpawn>
+            {
+                new BossFightSpawn(0, isBoss: false, 120, 150),
+                new BossFightSpawn(1, isBoss: false, 80, 90),
+            };
+
+            Assert.Equal(expected, BossHealthRules.TargetHealth(spawns, cruciball));
+        }
+
+        [Fact]
+        public void TargetHealth_BossFightMinionDoesNotShiftTheBossThreshold()
+        {
+            // A boss with a tougher unflagged minion: at Cruciball 6 the minion goes up, the boss does not
+            List<BossFightSpawn> spawns = new List<BossFightSpawn>
+            {
+                new BossFightSpawn(0, isBoss: true, 650, 800),
+                new BossFightSpawn(0, isBoss: false, 900, 950),
+            };
+
+            Assert.Equal(650, BossHealthRules.TargetHealth(spawns, cruciballLevel: 6));
+            Assert.Equal(800, BossHealthRules.TargetHealth(spawns, cruciballLevel: 10));
+        }
+
         [Fact]
         public void TargetHealth_PicksTheBigBossNotATougherMinion()
         {

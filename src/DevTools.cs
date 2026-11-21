@@ -57,6 +57,56 @@ namespace PeglinBalatroScore
             {
                 ToggleBombRelics();
             }
+            if (Plugin.DevTargetHotkey.Value.IsDown())
+            {
+                ToggleTargetProvider();
+            }
+            if (Plugin.DevSuppressHotkey.Value.IsDown())
+            {
+                ToggleSuppressor();
+            }
+        }
+
+        private const string DevProviderGuid = "PeglinBalatroScore.Dev";
+        private static bool _targetProviderOn;
+
+        /// <summary>Registers (or removes) a fixed target through the public API, exactly as another mod would.</summary>
+        private static void ToggleTargetProvider()
+        {
+            _targetProviderOn = !_targetProviderOn;
+            if (_targetProviderOn)
+            {
+                BalatroScoreApi.SetTargetProvider(DevProviderGuid, () => Plugin.DevTargetValue.Value);
+                BalatroScoreApi.SetScoreListener(DevProviderGuid, (kind, total, target) =>
+                    ModLog.Info($"Dev score listener: {kind} {total} against {target}."));
+                ModLog.Info($"Dev target provider and score listener on: the next shot aims at {Plugin.DevTargetValue.Value} HP.");
+            }
+            else
+            {
+                BalatroScoreApi.RemoveAll(DevProviderGuid);
+                ModLog.Info("Dev target provider and score listener off.");
+            }
+        }
+
+        private const string DevSuppressorGuid = "PeglinBalatroScore.DevHide";
+        /// <summary>What each press of the suppressor key hides, in turn; null hides everything, empty nothing.</summary>
+        private static readonly string[] SuppressSteps = { "overkill", "bomb_chest", null, "" };
+        private static int _suppressStep = SuppressSteps.Length - 1;
+
+        /// <summary>Hides parts of the HUD through the public API, exactly as another mod would: OVERKILL only, then the
+        /// bomb chest only, then everything, then nothing.</summary>
+        private static void ToggleSuppressor()
+        {
+            _suppressStep = (_suppressStep + 1) % SuppressSteps.Length;
+            string hide = SuppressSteps[_suppressStep];
+            if (hide == "")
+            {
+                BalatroScoreApi.RemoveAll(DevSuppressorGuid);
+                ModLog.Info("Dev HUD suppressor off.");
+                return;
+            }
+            BalatroScoreApi.SetHudSuppressor(DevSuppressorGuid, part => hide == null || part == hide);
+            ModLog.Info($"Dev HUD suppressor hides: {hide ?? "everything"}.");
         }
 
         private static void ToggleBombRelics()

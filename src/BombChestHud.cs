@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Battle;
 using Battle.Attacks;
+using Battle.Enemies;
 using HarmonyLib;
 using PeglinBalatroScore.Core;
 using UnityEngine;
@@ -97,6 +98,9 @@ namespace PeglinBalatroScore
         private int _seenBombs;
         private int _seenRiggedBombs;
 
+        /// <summary>The chest was turned off or hidden during this turn's bombs; keep it gone until they are all thrown.</summary>
+        private bool _keepDropped;
+
         private class BombView
         {
             public PhysicsBall Ball;
@@ -110,6 +114,11 @@ namespace PeglinBalatroScore
         /// <summary>A thrown bomb hit an enemy for this much (from the DamageEnemyWithBomb patch); counted once per bomb.</summary>
         internal static void BombDamage(BombLob bomb, long amount)
         {
+            if (bomb != null)
+            {
+                // Counted for other mods even while the chest is off or hidden.
+                ScoreHud.Bombs.Add(bomb.GetInstanceID(), amount);
+            }
             if (_instance == null || _instance._timeline == null || bomb == null)
             {
                 return;
@@ -222,6 +231,14 @@ namespace PeglinBalatroScore
         /// </summary>
         private void WatchBombs()
         {
+            // Off in the settings, or hidden by another mod through BalatroScoreApi.
+            bool wanted = Plugin.ShowBombChest.Value && !BalatroScoreApi.IsSuppressed(BalatroScoreApi.PartBombChest);
+            if (!wanted)
+            {
+                // Once dropped, the chest stays gone until this turn's bombs are all thrown: brought back mid-throw it would
+                // show only the bombs still to come and part of the total.
+                _keepDropped = true;
+            }
             if (_battle == null && BattleController.BattleActive)
             {
                 _battle = FindObjectOfType<BattleController>();
@@ -234,7 +251,7 @@ namespace PeglinBalatroScore
                 _seenRiggedBombs = 0;
                 // A battle that ends before Peglin throws still pays out what the chest caught; with the chest turned
                 // off there is nothing to pay out, so drop it instead.
-                if (Plugin.ShowBombChest.Value)
+                if (wanted && !_keepDropped)
                 {
                     _timeline.ThrowFinished();
                 }
@@ -242,9 +259,16 @@ namespace PeglinBalatroScore
                 {
                     _timeline.Reset();
                 }
+                _keepDropped = false;
                 return;
             }
-            if (!Plugin.ShowBombChest.Value)
+            int bombs = BombsToThrowRef(_battle);
+            int rigged = RiggedBombsToThrowRef(_battle);
+            if (wanted && bombs == 0 && rigged == 0)
+            {
+                _keepDropped = false;
+            }
+            if (_keepDropped)
             {
                 // Turned off mid-throw: drop the chest rather than let it burst and fade on its own.
                 _seenBombs = 0;
@@ -252,8 +276,6 @@ namespace PeglinBalatroScore
                 _timeline.Reset();
                 return;
             }
-            int bombs = BombsToThrowRef(_battle);
-            int rigged = RiggedBombsToThrowRef(_battle);
             for (int i = _seenRiggedBombs; i < rigged; i++)
             {
                 _timeline.BombAdded(rigged: true);
@@ -722,8 +744,13 @@ namespace PeglinBalatroScore
     [HarmonyPatch(typeof(BattleController), "DamageEnemyWithBomb")]
     internal static class BombDamagePatch
     {
-        private static void Prefix(BombLob bomb, long damage)
+        private static void Prefix(BombLob bomb, Enemy enemy, long damage)
         {
+            // The game skips a bomb with no enemy to hit (e.g. a strong bomb with no target), so it deals nothing.
+            if (enemy == null)
+            {
+                return;
+            }
             try
             {
                 BombChestHud.BombDamage(bomb, damage);

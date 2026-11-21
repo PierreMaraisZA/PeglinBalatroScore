@@ -132,7 +132,7 @@ namespace PeglinBalatroScore
             // Slam down from big and tilted, then settle into a slow burning wobble.
             float t = Mathf.Clamp01(_age / StampTime);
             float scale = Mathf.Lerp(StampFromScale, 1f, 1f - (1f - t) * (1f - t));
-            float wobble = t >= 1f ? Mathf.Sin(time * 5f) * 2f + Random.Range(-0.6f, 0.6f) : 0f;
+            float wobble = t >= 1f ? Mathf.Sin(time * 5f) * 2f + VisualRandom.Range(-0.6f, 0.6f) : 0f;
             _rect.localScale = Vector3.one * scale;
             _rect.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(RestAngle - 18f, RestAngle, t) + wobble);
 

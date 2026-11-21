@@ -112,6 +112,15 @@ namespace PeglinBalatroScore
 
         internal static ScoreHud Instance => _instance;
 
+        /// <summary>Thrown bombs' damage this turn, reported to other mods when the next shot is fired or the battle ends.</summary>
+        internal static readonly BombTally Bombs = new BombTally();
+
+        /// <summary>The target chosen for the latest shot; 0 before the first one.</summary>
+        internal long CurrentTarget => _target;
+
+        /// <summary>The target of the latest damaging shot (bombs are measured against it, even after a healing shot).</summary>
+        private long _damageTarget;
+
         /// <summary>The canvas the score draws on; the bomb chest shares it so both sit under the game's tooltips.</summary>
         internal RectTransform CanvasRect => _canvasRect;
 
@@ -129,12 +138,14 @@ namespace PeglinBalatroScore
         /// <summary>The attack went out: use its exact total (a few relics only apply their multiplier now).</summary>
         internal static void AttackFired(AttackManager attackManager, int pegTally, float damageMultiplier, long damageBonus, int critCount)
         {
-            if (_instance == null || _instance._tracker.Phase != ScorePhase.Result)
+            if (_instance == null
+                || (_instance._tracker.Phase != ScorePhase.Result && !_instance._tracker.ReportPending))
             {
                 return;
             }
             long total = attackManager.GetCurrentDamage(pegTally, damageMultiplier, damageBonus, critCount);
             _instance._tracker.RefineResult(total);
+            _instance.Report();
         }
 
         private void Awake()
@@ -201,6 +212,8 @@ namespace PeglinBalatroScore
 
         private void OnBattleStarted()
         {
+            // Bombs left over from a battle that never ended cleanly don't belong to this one.
+            Bombs.Clear();
             // Loading the boss prefab can take a moment the first time in an act; do it now rather than mid-shot.
             BossTarget.Get();
         }
@@ -216,6 +229,10 @@ namespace PeglinBalatroScore
 
         private void OnShotFired(Vector2 aimVector)
         {
+            // Before this shot starts: the last shot, if its attack never refined it, then last turn's bombs, which have
+            // all landed by the time Peglin fires again.
+            Report();
+            ReportBombs();
             BattleController battle = FindBattle();
             // Extra balls from the same shot (summoning circle, multiball) also report a fire: keep counting.
             if (battle == null || !BattleController.BattleActive || _tracker.Phase == ScorePhase.Counting
@@ -226,15 +243,15 @@ namespace PeglinBalatroScore
             bool isHeal = battle.attackManager != null && battle.attackManager.isHeal;
             _tracker.ResultHoldSeconds = Plugin.ResultSeconds.Value;
             _tracker.BeginShot(isHeal);
-            _target = isHeal ? PlayerMaxHealth(battle) : BossTarget.Get();
-            if (!isHeal && BattleController.IsBossBattle)
+            // Providers are asked first and the map's boss is only used when none of them has an opinion, so a cached
+            // map target can never hide a provider's value.
+            long provided = isHeal ? 0 : BalatroScoreApi.Providers.Resolve();
+            _target = ShotTargetRules.Choose(isHeal, isHeal ? PlayerMaxHealth(battle) : 0, provided,
+                provided > 0 || isHeal ? 0 : BossTarget.Get(), BattleController.IsBossBattle,
+                () => ToughestEnemyOnScreen(bossOnly: true), () => ToughestEnemyOnScreen(bossOnly: false));
+            if (!isHeal)
             {
-                // In the boss fight itself the live boss is the final word (e.g. relics that change its HP).
-                _target = Math.Max(_target, ToughestEnemyOnScreen(bossOnly: true));
-            }
-            if (_target <= 0)
-            {
-                _target = ToughestEnemyOnScreen(bossOnly: false);
+                _damageTarget = _target;
             }
             int floor = BossTarget.FloorInAct();
             _flameStart = FlameCurve.StartRatioForFloor(floor);
@@ -261,11 +278,15 @@ namespace PeglinBalatroScore
 
         private void OnBattleEnded()
         {
-            // A result from the winning shot stays up for its full time; only a shot cut off mid-flight is dropped.
+            // The game can end the battle the moment the last ball stops, before telling us the shot is complete (every
+            // enemy died during the shot): finish it here so it shows and is reported like any other.
             if (_tracker.Phase == ScorePhase.Counting)
             {
-                _tracker.Clear();
+                ReadGame(force: true);
+                _tracker.CompleteShot(_tracker.Total);
             }
+            Report();
+            ReportBombs();
         }
 
         private void Update()
@@ -298,7 +319,8 @@ namespace PeglinBalatroScore
             bool inBattle = battle != null && BattleController.BattleActive
                 && BattleController.CurrentBattleState != BattleController.BattleState.NAVIGATION;
             bool wanted = Plugin.ShowScore.Value && Time.timeScale > 0f
-                && (_tracker.Phase != ScorePhase.Ready || (inBattle && ScrollVisible()));
+                && (_tracker.Phase != ScorePhase.Ready || (inBattle && ScrollVisible()))
+                && !BalatroScoreApi.IsSuppressed(BalatroScoreApi.PartScore);
             _alpha = Mathf.MoveTowards(_alpha, wanted ? 1f : 0f, FadeSpeed * deltaTime);
             if (_alpha <= 0f)
             {
@@ -315,6 +337,24 @@ namespace PeglinBalatroScore
             Place();
             Animate(deltaTime, time);
             UpdateTooltip();
+        }
+
+        /// <summary>Tells other mods about the finished shot, once, with its final total.</summary>
+        private void Report()
+        {
+            if (_tracker.TakeReport(out long total, out bool heal))
+            {
+                BalatroScoreApi.ReportShot(heal, total, _target);
+            }
+        }
+
+        /// <summary>Tells other mods the thrown bombs' total since the last report, if any bomb did damage.</summary>
+        private void ReportBombs()
+        {
+            if (Bombs.TakeTotal(out long total))
+            {
+                BalatroScoreApi.ReportBombs(total, _damageTarget);
+            }
         }
 
         /// <summary>While the mouse is over the score, explain it and show the last shot.</summary>
@@ -388,7 +428,12 @@ namespace PeglinBalatroScore
                 {
                     _result.Punch(1f);
                 }
-                if (Plugin.ShowOverkill.Value && _target > 0 && total >= _target)
+                bool overkillWanted = Plugin.ShowOverkill.Value && !BalatroScoreApi.IsSuppressed(BalatroScoreApi.PartOverkill);
+                if (!overkillWanted)
+                {
+                    _overkill.Hide();
+                }
+                else if (_target > 0 && total >= _target)
                 {
                     // Healing past your max HP gets a green OVERHEAL instead.
                     _overkill.Show(_tracker.IsHeal);
@@ -846,15 +891,26 @@ namespace PeglinBalatroScore
         }
     }
 
-    /// <summary>Catches the exact numbers the attack goes out with, to correct the result on show.</summary>
+    /// <summary>
+    /// Catches the exact numbers the attack goes out with, to correct the result. Read after Attack has run, because it
+    /// adds some bonuses itself (Echo orbs, Echo Chamber, attack-only flat bonuses) before storing them; the game
+    /// works out its own damage from the same stored values when the attack fires.
+    /// </summary>
     [HarmonyPatch(typeof(AttackManager), nameof(AttackManager.Attack))]
     internal static class AttackFiredPatch
     {
-        private static void Prefix(AttackManager __instance, int pegMultipliersTally, float dmgMultiplier, long dmgBonus, int criticalHitCount)
+        private static void Postfix(AttackManager __instance)
         {
             try
             {
-                ScoreHud.AttackFired(__instance, pegMultipliersTally, dmgMultiplier, dmgBonus, criticalHitCount);
+                Traverse data = Traverse.Create(__instance).Field("_currentAttackData");
+                if (data.GetValue() == null)
+                {
+                    return;
+                }
+                ScoreHud.AttackFired(__instance, data.Field("PegMultipliersTally").GetValue<int>(),
+                    data.Field("DmgMult").GetValue<float>(), data.Field("DmgBonus").GetValue<long>(),
+                    data.Field("CriticalHitCount").GetValue<int>());
             }
             catch (Exception e)
             {

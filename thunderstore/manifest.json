@@ -1,6 +1,6 @@
 {
   "name": "PeglinBalatroScore",
-  "version_number": "1.0.2",
+  "version_number": "1.1.0",
   "website_url": "https://github.com/PierreMaraisZA/PeglinBalatroScore",
   "description": "A Balatro-style pegs x damage score for every shot, with flames that grow as you close in on the act boss's HP and a bomb chest that pays out every bomb.",
   "dependencies": [

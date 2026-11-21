@@ -29,9 +29,13 @@ namespace PeglinBalatroScore.Core
         /// <summary>CruciballManager.EnemyShouldUseImprovedHealth gives bosses their higher HP from this level.</summary>
         public const int ImprovedBossHealthCruciball = 10;
 
+        /// <summary>...and every other enemy from this level (the game's non-boss branch of that method).</summary>
+        public const int ImprovedEnemyHealthCruciball = 6;
+
         public static float MaxHealth(BossFightSpawn spawn, int cruciballLevel)
         {
-            return cruciballLevel >= ImprovedBossHealthCruciball ? spawn.StartingHealthFirstCruciball : spawn.StartingHealth;
+            int threshold = spawn.IsBoss ? ImprovedBossHealthCruciball : ImprovedEnemyHealthCruciball;
+            return cruciballLevel >= threshold ? spawn.StartingHealthFirstCruciball : spawn.StartingHealth;
         }
 
         /// <summary>

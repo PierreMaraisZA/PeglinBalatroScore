@@ -12,7 +12,7 @@ namespace PeglinBalatroScore
         // BepInEx names the config file after the GUID, so this gives BepInEx/config/PeglinBalatroScore.cfg.
         public const string Guid = "PeglinBalatroScore";
         public const string Name = "PeglinBalatroScore";
-        public const string Version = "1.0.2";
+        public const string Version = "1.1.0";
 
         /// <summary>The Peglin version this mod was built and tested against (Unity's Application.version).</summary>
         public const string SupportedGameVersion = "2.0.12";
@@ -36,6 +36,9 @@ namespace PeglinBalatroScore
         // contain none of this code and no [Dev] config section, so it can't be switched on from the config.
         internal static ConfigEntry<bool> DevMode;
         internal static ConfigEntry<KeyboardShortcut> DevBombRelicsHotkey;
+        internal static ConfigEntry<KeyboardShortcut> DevTargetHotkey;
+        internal static ConfigEntry<int> DevTargetValue;
+        internal static ConfigEntry<KeyboardShortcut> DevSuppressHotkey;
 
         internal static bool DevModeActive => DevMode != null && DevMode.Value;
 #else
@@ -75,6 +78,12 @@ namespace PeglinBalatroScore
                 "Turn on developer hotkeys. Only exists in Debug builds.");
             DevBombRelicsHotkey = Config.Bind("Dev", "BombRelicsHotkey", new KeyboardShortcut(KeyCode.F3),
                 "Give every bomb relic you don't have; press again to take back the ones it gave. Adding a relic also unlocks it in your save for good (this is a development tool).");
+            DevTargetHotkey = Config.Bind("Dev", "TargetProviderHotkey", new KeyboardShortcut(KeyCode.F4),
+                "Switch a fixed score target on and off through BalatroScoreApi, to check the provider path.");
+            DevTargetValue = Config.Bind("Dev", "TargetProviderValue", 50,
+                new ConfigDescription("The target HP the dev provider gives.", new AcceptableValueRange<int>(1, 100000000)));
+            DevSuppressHotkey = Config.Bind("Dev", "HudSuppressorHotkey", new KeyboardShortcut(KeyCode.F10),
+                "Hide parts of the HUD through BalatroScoreApi, to check the suppressor path: each press hides OVERKILL only, then the bomb chest only, then everything, then nothing.");
 #endif
 
             CheckGameVersion();

@@ -190,7 +190,7 @@ namespace PeglinBalatroScore
         public void Punch(float strength)
         {
             _punch = Mathf.Max(_punch, strength);
-            _tilt = (Random.value < 0.5f ? -1f : 1f) * Random.Range(6f, 12f);
+            _tilt = (VisualRandom.Value < 0.5f ? -1f : 1f) * VisualRandom.Range(6f, 12f);
             _flashAlpha = Mathf.Max(_flashAlpha, 0.55f * strength);
         }
 
@@ -206,8 +206,8 @@ namespace PeglinBalatroScore
             float angle = _tilt * _punch;
             if (shake > 0f)
             {
-                offset += Random.insideUnitCircle * (shake * 5f);
-                angle += Random.Range(-1f, 1f) * shake * 4f;
+                offset += VisualRandom.InsideUnitCircle * (shake * 5f);
+                angle += VisualRandom.Range(-1f, 1f) * shake * 4f;
             }
             _textRect.anchoredPosition = offset;
             _textRect.localRotation = Quaternion.Euler(0f, 0f, angle);
